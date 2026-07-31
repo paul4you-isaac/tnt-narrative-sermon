@@ -1,6 +1,6 @@
 {
   "name": "tnt-narrative-sermon",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "T&T 내러티브 설교 코칭 시스템 — 임도균 「스토리가 살아있는 설교」에 근거한 10단계 설교 코칭 스킬 모음. 설교를 대신 써 주지 않고, 질문·리서치·판정으로 설교자가 직접 내러티브 설교를 완성하도록 돕는다.",
   "author": {
     "name": "paul4you-isaac"
