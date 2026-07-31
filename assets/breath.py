@@ -33,8 +33,13 @@ CONN = re.compile(
     # ⚠ 바른 '처럼'은 절을 닫는 '것처럼'만. 명사 비유('벽처럼')에서 끊으면
     #    비유가 수식하는 말과 갈라진다.
     r'|것처럼|것같이|듯이|만큼|채로|려고|고서|고)[,]?$')
-# 보조용언·의존 형태 — 이 앞에서 끊으면 어절 묶음이 갈라진다
-AUX = re.compile(r'^(?:하|했|해|계|있|없|말|싶|드|버|못|같|되|주|보|만|줄|채|양|법|듯|뻔|via)')
+# 보조용언·의존 형태 — 이 앞에서 끊으면 어절 묶음이 갈라진다.
+# 부정 보조용언(않·아니·못·말)을 빠뜨리면 "관심을 두지 / 않았습니다"가 남는다.
+AUX = re.compile(r'^(?:하|했|해|계|있|없|않|아니|못|말|싶|드|버|같|되|주|보|만|줄|채|양|법|듯|뻔)')
+# 부사형 어미 -게 는 반드시 뒤의 서술어를 수식한다. 떼면 "뿌옇게 / 가렸습니다"가 된다.
+# 뒷말이 보조용언인지와 무관하게 붙여야 하므로 AUX와 별도 규칙으로 둔다.
+# 목적격 조사도 마찬가지 — "하나님을 / 찬양했던"처럼 서술어에서 떨어지면 안 된다.
+GLUE = re.compile(r'(게|을|를)$')
 MIN = 12
 
 
@@ -59,13 +64,42 @@ def breath(line: str, mn: int = MIN) -> list[str]:
     return out or [line.strip()]
 
 
+def _repair(lines: list[str]) -> list[str]:
+    """설교자가 넣은 줄바꿈은 보존하고, **망가진 어절 묶음만** 되붙인다.
+
+    ★ 줄을 나눌 수는 있어도 합칠 수는 없다.
+      문단을 통째로 이어 붙인 뒤 다시 나누면 코치가 잘못 끊은 자리는 고쳐지지만
+      **설교자가 의도해서 넣은 줄바꿈도 함께 지워진다.**
+      실사용에서 "…머물러야하니까요"(예수님 대사 끝)와 "함께 식탁에…"(설교자 서술)가
+      한 줄로 붙어 화자가 뭉개졌다. 그래서 되붙이기는 '수리'로만 한정한다.
+
+    되붙이는 조건: 앞 줄이 문장 끝·쉼표·연결어미로 끝나지 **않고**,
+                   뒷 줄이 보조용언으로 시작할 때. (예: "서" + "있었습니다")
+    """
+    out = []
+    for ln in lines:
+        s = ln.strip()
+        if not s:
+            continue
+        if out:
+            prev = out[-1]
+            last = prev.split()[-1]
+            head = s.split()[0]
+            free = SENT.search(last) or last.endswith(',') or CONN.search(last)
+            broken = (not free) and (AUX.match(head) or GLUE.search(last))
+            if broken:
+                out[-1] = prev + ' ' + s
+                continue
+        out.append(s)
+    return out
+
+
 def to_blocks_html(md: str, esc=None) -> str:
     """마크다운 원고 → 프롬프터 block-body HTML.
 
     빈 줄 = 문단 경계, '>' 로 시작하면 blockquote(성경 인용).
-    각 줄은 breath()로 호흡 분할 후 <br> 로 잇는다.
-    입력의 줄바꿈은 의미가 없다(문단 단위로 다시 이어 붙인 뒤 분할한다) —
-    앞선 회차의 잘못된 줄나눔을 그대로 물려받지 않기 위함이다.
+    설교자의 줄바꿈은 **보존**하고, 망가진 어절 묶음만 되붙인 뒤(_repair),
+    그래도 안전한 내부 경계가 있는 줄만 breath()로 더 나눈다.
     """
     import html as _h
     esc = esc or _h.escape
@@ -73,14 +107,16 @@ def to_blocks_html(md: str, esc=None) -> str:
 
     def flush_p():
         if para:
-            lines = breath(' '.join(para))
+            lines = []
+            for ln in _repair(para):
+                lines.extend(breath(ln))
             out.append("      <p>" + "<br>\n      ".join(esc(x) for x in lines) + "</p>")
             para.clear()
 
     def flush_q():
         if quote:
             out.append("      <blockquote>" +
-                       "<br>\n      ".join(esc(x) for x in quote) + "</blockquote>")
+                       "<br>\n      ".join(esc(x) for x in _repair(quote)) + "</blockquote>")
             quote.clear()
 
     for raw in md.split("\n"):
@@ -90,7 +126,7 @@ def to_blocks_html(md: str, esc=None) -> str:
         if not s.strip():
             flush_q(); flush_p(); continue
         if s.lstrip().startswith(">"):
-            flush_p(); quote.append(s.lstrip()[1:].strip())   # 성경 인용은 원 줄나눔 존중
+            flush_p(); quote.append(s.lstrip()[1:].strip())
         else:
             flush_q(); para.append(s.strip())
     flush_q(); flush_p()
