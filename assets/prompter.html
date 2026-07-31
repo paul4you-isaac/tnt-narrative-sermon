@@ -514,15 +514,38 @@ function revertUnit(i){
   delete store[i]; saveStore(); renderHist(); updateEta();
 }
 document.getElementById('edApply').onclick=()=>applyEdit(edText.value);
-/* 문장 종결·연결 경계에서 자동으로 호흡을 나눠 준다(설교자가 손질할 초안) */
+/* ── 호흡 나누기 ─────────────────────────────────────
+   설교자가 손질할 초안을 만든다. 어절 단위로 채우다가
+   ① 문장 끝 ② 쉼표 ③ 연결어미(뒤가 보조용언이면 유지)
+   ④ MAX를 넘기 직전  중 하나에서 끊는다.
+   ④를 "넘은 뒤"가 아니라 "넘기 전"에 검사해야 긴 꼬리가 남지 않는다. */
+const BRK_SENT=/[.!?…]["”’']?$/;
+const BRK_CONN=/(습니다|입니다|합니다|하십니다|셨습니다|것입니다|하겠습니다|같았습니다|지만|는데|면서|으므로|므로|때문에|라고|하여|길래|으며|이며|거나|든지|도록|더니|아서|어서|여서|으니|으면|다면)[,]?$/;
+const BRK_AUX=/^(?:하|했|해|계|있|없|말|싶|드|버|못|같|되|주|보)/;   // 보조용언 — 앞에서 끊지 않는다
+const BRK_MIN=12, BRK_MAX=32;
+function breathBreak(v){
+  const w=v.replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
+  const out=[]; let cur=[];
+  const L=a=>a.join(' ').length;
+  for(let i=0;i<w.length;i++){
+    if(cur.length && L(cur)>=BRK_MIN && L(cur.concat(w[i]))>BRK_MAX){ out.push(cur.join(' ')); cur=[]; }
+    cur.push(w[i]); const nx=w[i+1]||'';
+    if(!nx) break;
+    if(BRK_SENT.test(w[i]) || (L(cur)>=BRK_MIN && (/,$/.test(w[i]) || (BRK_CONN.test(w[i]) && !BRK_AUX.test(nx))))){
+      out.push(cur.join(' ')); cur=[];
+    }
+  }
+  if(cur.length) out.push(cur.join(' '));
+  return out.join('\n');
+}
 document.getElementById('edBreak').onclick=()=>{
-  edText.value = edText.value
-    .replace(/\n+/g,' ').replace(/\s+/g,' ').trim()
-    .replace(/([.!?])\s+/g,'$1\n')
-    .replace(/(습니다|입니다|합니다|하십니다|셨습니다|것입니다)([,.])\s*/g,'$1$2\n')
-    .replace(/(지만|는데|면서|으므로|때문에|라고|하고),?\s+/g,'$&\n')
-    .replace(/,\s+/g,',\n')
-    .split('\n').map(s=>s.trim()).filter(Boolean).join('\n');
+  const before = edText.value;
+  edText.value = breathBreak(before);
+  const b = document.getElementById('edBreak');
+  if(edText.value === before){            // 끊을 자리가 없으면 그 사실을 알린다
+    b.textContent = '↵ 끊을 자리 없음 (이미 한 호흡)';
+    setTimeout(()=>{ b.textContent='↵ 호흡 나누기'; }, 1800);
+  }
   edText.focus();
 };
 document.getElementById('edCancel').onclick=closeEditor;
