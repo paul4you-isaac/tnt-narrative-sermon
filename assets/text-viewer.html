@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}} — {{REF}}</title>
+<style>
+:root{
+  --bg:#fbfaf7; --fg:#1c1b19; --muted:#6b6862; --line:#e3ded4;
+  --card:#ffffff; --accent:#7a5c2e; --accent-soft:#f3ecdf;
+  --num:#a89b84; --focus:#fff8e6;
+  --mono:"SF Mono",ui-monospace,Menlo,monospace;
+  --serif:"Noto Serif KR","Apple SD Gothic Neo","Malgun Gothic",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#16150f; --fg:#eae6dc; --muted:#9a948a; --line:#2f2c24;
+    --card:#1e1c15; --accent:#d4b578; --accent-soft:#2a2519;
+    --num:#6f6858; --focus:#26210f;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font-family:var(--serif); line-height:1.75;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 80px}
+
+header.doc{border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:18px}
+.sub{font-size:.8rem;color:var(--muted);letter-spacing:.02em}
+h1{font-size:1.45rem;margin:.3em 0 .2em;line-height:1.35}
+.ref{font-size:.86rem;color:var(--accent);font-weight:600}
+
+/* ── controls ───────────────────────────── */
+.controls{
+  position:sticky;top:0;z-index:20;background:var(--bg);
+  border-bottom:1px solid var(--line);
+  padding:10px 0 12px;margin-bottom:20px;
+}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row+.row{margin-top:8px}
+.lbl{font-size:.72rem;color:var(--muted);margin-right:2px;min-width:52px}
+button,select{
+  font-family:inherit;font-size:.82rem;color:var(--fg);
+  background:var(--card);border:1px solid var(--line);
+  border-radius:6px;padding:5px 11px;cursor:pointer;
+  transition:background .12s,border-color .12s;
+}
+button:hover{border-color:var(--accent)}
+button.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+button.tts{border-color:var(--accent);color:var(--accent)}
+button.tts.playing{background:var(--accent);color:var(--bg)}
+
+/* ── sections ───────────────────────────── */
+details.sec{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:10px;margin-bottom:16px;overflow:hidden;
+}
+details.sec[data-main="1"]{border-color:var(--accent);border-width:1.5px}
+summary{
+  cursor:pointer;padding:13px 16px;list-style:none;
+  display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;
+  background:var(--accent-soft);
+}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸";color:var(--accent);font-size:.8rem;transition:transform .15s}
+details[open] summary::before{content:"▾"}
+.sec-tag{font-size:.7rem;font-weight:700;color:var(--accent);letter-spacing:.06em}
+.sec-ref{font-size:.95rem;font-weight:700}
+.sec-title{font-size:.8rem;color:var(--muted)}
+.sec-body{padding:14px 16px 18px}
+.sec-tools{margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+
+/* ── single-version (구문 배열) ──────────── */
+/* 내어쓰기 폭은 rem으로 통일 — em은 요소별 글꼴 크기에 따라 어긋난다 */
+.verse{margin:0 0 14px;padding-left:2.6rem}
+.verse.hl{background:var(--focus);border-radius:5px;padding-top:2px;padding-bottom:2px}
+.vn{
+  display:inline-block;width:2.6rem;
+  font-family:var(--mono);font-size:.7rem;font-weight:600;
+  color:var(--num);user-select:none;
+  text-indent:0;   /* 첫 줄의 음수 text-indent 상속을 끊는다(숫자가 밀려나 사라짐 방지) */
+}
+.ph{display:block;margin-left:0}
+/* 절 번호를 그 절 첫 줄과 같은 줄에 매달아 놓는다(내어쓰기) */
+.ph.first{text-indent:-2.6rem}
+.ph.d1{margin-left:1.5em}
+.ph.d2{margin-left:3em}
+
+/* ── comparison (평문) ──────────────────── */
+.cmp{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.cmp-v{margin-bottom:18px}
+.cmp-vn{
+  font-family:var(--mono);font-size:.72rem;font-weight:700;
+  color:var(--accent);letter-spacing:.04em;
+  border-bottom:1px solid var(--line);display:block;
+  padding-bottom:3px;margin-bottom:7px;
+}
+.cmp-r{display:grid;grid-template-columns:5.2em 1fr;gap:8px;margin-bottom:5px;font-size:.94rem}
+.cmp-name{font-size:.68rem;color:var(--muted);padding-top:.35em;font-family:var(--mono)}
+@media (max-width:560px){
+  .cmp-r{grid-template-columns:1fr;gap:1px}
+  .cmp-name{padding-top:0}
+}
+
+footer.note{
+  margin-top:32px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:.74rem;color:var(--muted);line-height:1.7;
+}
+footer.note p{margin:.5em 0}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <div class="sub">{{SUBTITLE}}</div>
+  <h1>{{TITLE}}</h1>
+  <div class="ref">{{REF}}</div>
+</header>
+
+<div class="controls">
+  <div class="row">
+    <span class="lbl">역본</span>
+    <button class="ver on" data-v="새한글">새한글</button>
+    <button class="ver" data-v="개역개정">개역개정</button>
+    <button class="ver" data-v="새번역">새번역</button>
+    <button class="ver" data-v="공동번역">공동번역</button>
+    <button class="ver" data-v="ESV">ESV</button>
+    <button id="cmpBtn">절별 비교</button>
+  </div>
+  <div class="row">
+    <span class="lbl">낭독</span>
+    <select id="voice"></select>
+    <button class="spd on" data-s="1">1.0×</button>
+    <button class="spd" data-s="1.25">1.25×</button>
+    <button class="spd" data-s="1.5">1.5×</button>
+    <button id="stop">■ 정지</button>
+  </div>
+</div>
+
+<div id="sections"></div>
+
+<footer class="note">
+  {{FOOTER}}
+</footer>
+
+</div>
+
+<script>
+const VERSIONS = ["새한글","개역개정","새번역","공동번역","ESV"];
+
+const DATA = [
+{{DATA}}
+];
+
+/* ESV — 설교자 제공 클리핑에서 각주 표시 기호(단어에 붙은 낱글자·번호)만 제거하고
+   본문 낱말은 그대로 사용. 예: ralways→always, whis→his, aslaughter→slaughter */
+const ESV = {
+{{ESV_DATA}}
+};
+for(const s of DATA){
+  const e = ESV[s.id];
+  if(e) for(const n in e) s.v[n]["ESV"] = e[n];
+}
+
+/* ── 김상훈 구문 배열 근사 렌더러 ──────────────────
+   한글: 종결·연결 어미 / 쉼표 경계로 줄나눔.
+   영어: 절 경계(접속사·관계사) 앞 / 쉼표 경계로 줄나눔.
+   인용문("…" '…')은 한 단계 더 들여쓰기.
+   원문 글자는 고치지 않고 줄나눔·들여쓰기만 더한다.       */
+function phrase(text, v){
+  return v === "ESV" ? phraseEn(text) : phraseKo(text);
+}
+
+const EN_BREAK = /^(?:and|but|or|for|so|because|that|which|who|whom|whose|when|while|since|if|though|although|as|until|unless|before|after|saying|then)$/i;
+function phraseEn(text){
+  const out = [];
+  let buf = [], q = 0;
+  const w = String(text).split(/\s+/).filter(Boolean);
+  const flush = () => { if(buf.length){ out.push({d: q>0?1:0, t: buf.join(" ")}); buf = []; } };
+  for(let i = 0; i < w.length; i++){
+    const cur = w[i];
+    const bare = cur.replace(/^[“‘"']+/,"").replace(/[^A-Za-z]+$/,"");
+    if(buf.length && EN_BREAK.test(bare) && buf.join(" ").length >= 14) flush();
+    if(/^[“‘"]/.test(cur)) q++;
+    buf.push(cur);
+    const line = buf.join(" ");
+    if(/[.!?]["”’']?$/.test(cur))                 flush();
+    else if(/[,;:]$/.test(cur) && line.length >= 10) flush();
+    if(/[”’]/.test(cur)) q = Math.max(0, q-1);
+  }
+  flush();
+  return out.length ? out : [{d:0, t:text}];
+}
+
+const CONN = /(?:하시니라|하시니|하시매|하니라|여짜오되|이르시되|이르되|하였더라|하더라|하거늘|하시고|하니|하되|하며|하매|거늘|더라|니라|지라|때문에|위하여|려고|도록|으므로|므로|기에|면서|지만|는데|은데|아서|어서|여서|으니|으매|이요|이며|이고|고|며|서|니|면|나)$/;
+const SENT_END = /[.!?…]["”’']?$/;
+/* 보조용언(계셨다·했다·하니까요·말이야…)이 뒤따르면 끊지 않는다 */
+const AUX_NEXT = /^(?:하|했|해|계|있|없|말|싶|드|버|못|같|되|주|보)/;
+
+function phraseKo(text){
+  const out = [];
+  let buf = [], q = 0;
+  const w = String(text).split(/\s+/).filter(Boolean);
+  const flush = () => { if(buf.length){ out.push({d: q>0?1:0, t: buf.join(" ")}); buf = []; } };
+  for(let i = 0; i < w.length; i++){
+    const cur = w[i], nxt = w[i+1] || "";
+    if(/^[“‘"]/.test(cur)) q++;
+    buf.push(cur);
+    const line = buf.join(" ");
+    const auxFollows = nxt &&
+      nxt.replace(/["”’'.,!?…]/g,"").length <= 4 && AUX_NEXT.test(nxt);
+    if(SENT_END.test(cur))                                  flush();
+    else if(/,$/.test(cur) && line.length >= 6)              flush();
+    else if(!auxFollows && CONN.test(cur.replace(/["”’']+$/,"")) && line.length >= 12) flush();
+    if(/[”’]/.test(cur) || (/"/.test(cur) && !/^"/.test(cur))) q = Math.max(0, q-1);
+  }
+  flush();
+  return out.length ? out : [{d:0, t:text}];
+}
+
+/* ── state ─────────────────────────────── */
+let ver = "새한글", cmp = false, rate = 1, voices = [], voice = null, enVoice = null;
+
+/* ── render ────────────────────────────── */
+const host = document.getElementById("sections");
+
+function build(){
+  host.innerHTML = "";
+  for(const s of DATA){
+    const d = document.createElement("details");
+    d.className = "sec";
+    if(s.main) d.dataset.main = "1";
+    if(s.open) d.open = true;
+
+    const nums = Object.keys(s.v).map(Number).sort((a,b)=>a-b);
+
+    let body = `<div class="sec-body"><div class="sec-tools">
+      <button class="tts" data-sec="${s.id}">▶ ${s.tag} 전체 낭독</button>
+    </div>`;
+
+    if(cmp){
+      body += `<div class="cmp">`;
+      for(const n of nums){
+        body += `<div class="cmp-v"><span class="cmp-vn">${n}절</span>`;
+        for(const V of VERSIONS){
+          const t = s.v[n][V] || "";
+          body += `<div class="cmp-r"><div class="cmp-name">${V}</div><div>${esc(t)}</div></div>`;
+        }
+        body += `</div>`;
+      }
+      body += `</div>`;
+    } else {
+      for(const n of nums){
+        const t = s.v[n][ver] || "";
+        const lines = phrase(t, ver).map((p, j) =>
+          `<span class="ph${j===0?" first":""}${p.d?" d"+p.d:""}">${
+            j===0 ? `<span class="vn">${n}</span>` : ""}${esc(p.t)}</span>`).join("");
+        body += `<p class="verse" id="${s.id}-${n}">${lines}</p>`;
+      }
+    }
+    body += `</div>`;
+
+    d.innerHTML = `<summary>
+        <span class="sec-tag">${s.tag}</span>
+        <span class="sec-ref">${s.ref}</span>
+        <span class="sec-title">${s.title}</span>
+      </summary>${body}`;
+    host.appendChild(d);
+  }
+  host.querySelectorAll("button.tts").forEach(b =>
+    b.addEventListener("click", () => readSection(b.dataset.sec, b)));
+}
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+/* ── TTS (구획별 전체 읽기, 절 번호 제외) ── */
+function stopTTS(){
+  speechSynthesis.cancel();
+  document.querySelectorAll("button.tts.playing").forEach(b=>{
+    b.classList.remove("playing");
+    b.textContent = b.textContent.replace(/^■/,"▶");
+  });
+}
+function readSection(id, btn){
+  const playing = btn.classList.contains("playing");
+  stopTTS();
+  if(playing) return;
+
+  const s = DATA.find(x => x.id === id);
+  const useVer = cmp ? "새한글" : ver;
+  const nums = Object.keys(s.v).map(Number).sort((a,b)=>a-b);
+  const text = nums.map(n => s.v[n][useVer] || "").join(" ");
+
+  const isEn = useVer === "ESV";
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = isEn ? "en-US" : "ko-KR";
+  u.rate = rate;
+  const pick = isEn ? enVoice : voice;
+  if(pick) u.voice = pick;
+  btn.classList.add("playing");
+  btn.textContent = btn.textContent.replace(/^▶/,"■");
+  u.onend = u.onerror = () => {
+    btn.classList.remove("playing");
+    btn.textContent = btn.textContent.replace(/^■/,"▶");
+  };
+  speechSynthesis.speak(u);
+}
+
+/* ── voices ────────────────────────────── */
+const PREFER = ["유나","Yuna","지안","Jian"];
+const PREFER_EN = ["사만다","Samantha","Alex","Karen","Daniel"];
+function loadVoices(){
+  const all = speechSynthesis.getVoices();
+  enVoice = PREFER_EN.map(p => all.find(v => v.name.includes(p) && /^en/i.test(v.lang)))
+              .find(Boolean) || all.find(v => /^en/i.test(v.lang)) || null;
+  voices = all.filter(v => /^ko/i.test(v.lang));
+  if(!voices.length) voices = all;
+  const sel = document.getElementById("voice");
+  sel.innerHTML = "";
+  const rank = v => {
+    const i = PREFER.findIndex(p => v.name.includes(p));
+    return i < 0 ? 99 : i;
+  };
+  voices.sort((a,b) => rank(a) - rank(b));
+  voices.forEach((v,i) => {
+    const o = document.createElement("option");
+    o.value = i;
+    o.textContent = v.name + (/^ko/i.test(v.lang) ? "" : " ("+v.lang+")");
+    sel.appendChild(o);
+  });
+  voice = voices[0] || null;
+  sel.onchange = () => { voice = voices[sel.value]; };
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+/* ── controls ──────────────────────────── */
+document.querySelectorAll("button.ver").forEach(b => b.addEventListener("click", () => {
+  ver = b.dataset.v; cmp = false;
+  document.querySelectorAll("button.ver").forEach(x => x.classList.toggle("on", x === b));
+  document.getElementById("cmpBtn").classList.remove("on");
+  stopTTS(); build();
+}));
+document.getElementById("cmpBtn").addEventListener("click", function(){
+  cmp = !cmp;
+  this.classList.toggle("on", cmp);
+  document.querySelectorAll("button.ver").forEach(x =>
+    x.classList.toggle("on", !cmp && x.dataset.v === ver));
+  stopTTS(); build();
+});
+document.querySelectorAll("button.spd").forEach(b => b.addEventListener("click", () => {
+  rate = parseFloat(b.dataset.s);
+  document.querySelectorAll("button.spd").forEach(x => x.classList.toggle("on", x === b));
+}));
+document.getElementById("stop").addEventListener("click", stopTTS);
+window.addEventListener("beforeunload", stopTTS);
+
+build();
+</script>
+</body>
+</html>

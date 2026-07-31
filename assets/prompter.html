@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}} — {{REF}}</title>
+<style>
+:root{
+  --bg:#fbfaf7; --fg:#1a1917; --muted:#6b6862; --line:#e2ddd3;
+  --card:#fff; --accent:#7a5c2e; --soft:#f4eee2;
+  --now:#fff6da; --quote:#f0e9db; --fix:#b03030; --fixbg:#fdeeee;
+  --guide:rgba(122,92,46,.30);
+  --selbg:#ffe9a8; --selbd:#c79a2e; --editbg:#e8f2e4; --editbd:#5c8a4a;
+  --serif:"RIDIBatang","Noto Serif KR","Apple SD Gothic Neo",serif;
+  --gothic:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,monospace;
+}
+body.dark{
+  --bg:#0e0e0b; --fg:#efece2; --muted:#969086; --line:#2b2820;
+  --card:#17160f; --accent:#dcbe82; --soft:#241f14;
+  --now:#3a3116; --quote:#1f1c13; --fix:#ff9b9b; --fixbg:#2a1616;
+  --guide:rgba(220,190,130,.35);
+  --selbg:#5a4a18; --selbd:#dcbe82; --editbg:#1d2c1a; --editbd:#7fb56a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font-family:var(--serif);line-height:1.95;
+  -webkit-text-size-adjust:100%;
+}
+body.gothic{font-family:var(--gothic)}
+.wrap{max-width:900px;margin:0 auto;padding:16px 18px 60vh}
+
+/* ── header ── */
+header.doc-header{border-bottom:2px solid var(--accent);padding-bottom:13px;margin-bottom:16px}
+.subtitle{font-size:.78rem;color:var(--muted);letter-spacing:.02em}
+h1.title{font-size:1.5rem;margin:.3em 0 .25em;line-height:1.35}
+.ref{font-size:.85rem;color:var(--accent);font-weight:700}
+
+.scripture-card{
+  background:var(--soft);border-left:4px solid var(--accent);
+  border-radius:8px;padding:13px 16px;margin:16px 0 20px;
+}
+.scripture-card .lbl{font-size:.7rem;font-weight:700;color:var(--accent);letter-spacing:.06em}
+.scripture-card p{margin:.45em 0 0;font-size:1.05rem}
+.scripture-card .note{font-size:.75rem;color:var(--muted);margin-top:.5em}
+
+.legend{
+  border:1px dashed var(--line);border-radius:8px;padding:10px 13px;
+  margin:0 0 22px;font-size:.76rem;color:var(--muted);line-height:1.7;
+}
+.legend b{color:var(--fg)}
+
+/* ── control bar ── */
+.bar{
+  position:sticky;top:0;z-index:30;background:var(--bg);
+  border-bottom:1px solid var(--line);padding:8px 0 10px;margin-bottom:22px;
+}
+.row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.row+.row{margin-top:6px}
+.lb{font-size:.68rem;color:var(--muted);min-width:44px;font-family:var(--gothic)}
+button,select{
+  font-family:var(--gothic);font-size:.79rem;color:var(--fg);background:var(--card);
+  border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;
+}
+button:hover{border-color:var(--accent)}
+button.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+button.key{border-color:var(--accent);color:var(--accent);font-weight:700}
+button.key.act{background:var(--accent);color:var(--bg)}
+#eta{font-family:var(--gothic);font-size:.72rem;color:var(--muted);margin-left:2px}
+
+/* ── blocks ── */
+.sermon-block{margin:0 0 34px;scroll-margin-top:120px}
+.block-title{
+  display:flex;flex-wrap:wrap;gap:9px;align-items:baseline;
+  border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:12px;
+}
+.block-title .no{font-family:var(--mono);font-size:.7rem;font-weight:700;color:var(--accent)}
+.block-title .nm{font-size:.98rem;font-weight:700}
+.block-title .vs{font-size:.76rem;color:var(--muted)}
+.block-body p{margin:0 0 1.15em;font-size:1.5rem}
+.block-body blockquote{
+  margin:0 0 1.15em;padding:11px 16px;background:var(--quote);
+  border-left:3px solid var(--accent);border-radius:0 6px 6px 0;font-size:1.45rem;
+}
+.sermon-block.now{background:var(--now);border-radius:8px;
+  box-shadow:0 0 0 12px var(--now);}
+
+/* 수정 필요 표시 — 화면에는 보이되 낭독 제외 */
+.no-tts{
+  font-family:var(--gothic);font-size:.79rem;line-height:1.65;
+  color:var(--fix);background:var(--fixbg);
+  border-left:3px solid var(--fix);border-radius:0 5px 5px 0;
+  padding:8px 12px;margin:0 0 1.1em;
+}
+.no-tts b{display:block;margin-bottom:2px}
+
+/* 읽기 점검 표시 */
+.block-body p.flag,.block-body blockquote.flag{
+  outline:2px dashed var(--fix);outline-offset:4px;border-radius:4px;
+}
+
+/* ── 단어 단위 선택·편집 ── */
+.w{cursor:text;border-radius:3px}
+.w.sel{background:var(--selbg);box-shadow:0 0 0 1px var(--selbd)}
+.edited{
+  background:var(--editbg);border-bottom:2px solid var(--editbd);
+  border-radius:3px;padding:0 1px;
+}
+#editor{
+  position:absolute;z-index:60;width:min(440px,calc(100vw - 32px));
+  background:var(--card);border:1.5px solid var(--accent);border-radius:10px;
+  box-shadow:0 10px 32px rgba(0,0,0,.22);padding:12px;display:none;
+  font-family:var(--gothic);
+}
+#editor .orig{
+  font-size:.74rem;color:var(--muted);line-height:1.6;
+  border-left:3px solid var(--line);padding:3px 0 3px 9px;margin-bottom:8px;
+  max-height:5.2em;overflow:auto;
+}
+#editor .orig b{color:var(--fg);font-weight:600}
+#editor textarea{
+  width:100%;min-height:74px;font-family:var(--serif);font-size:1.02rem;line-height:1.7;
+  color:var(--fg);background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:8px 10px;resize:vertical;
+}
+#editor .btns{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;align-items:center}
+#editor .hint{font-size:.68rem;color:var(--muted);margin-left:auto}
+#editor button{font-size:.78rem}
+
+#hist{margin:22px 0 0;font-size:.78rem;font-family:var(--gothic);display:none}
+#hist h3{font-size:.8rem;color:var(--accent);margin:0 0 7px}
+#hist ol{margin:0;padding-left:1.4em}
+#hist li{margin-bottom:7px;line-height:1.65}
+#hist .f{color:var(--muted);text-decoration:line-through}
+#hist .t{color:var(--fg);font-weight:600}
+#hist .rv{font-size:.68rem;margin-left:6px;padding:1px 6px}
+
+#guide{
+  position:fixed;left:0;right:0;top:46%;height:0;
+  border-top:2px solid var(--guide);pointer-events:none;z-index:20;display:none;
+}
+body.guideon #guide{display:block}
+
+#out{margin:26px 0;padding:14px;border:1.5px solid var(--accent);
+  border-radius:9px;background:var(--card);display:none}
+#out h2{font-size:.85rem;margin:0 0 8px;color:var(--accent);font-family:var(--gothic)}
+#out textarea{width:100%;min-height:150px;font-family:var(--mono);font-size:.78rem;
+  line-height:1.6;color:var(--fg);background:var(--bg);
+  border:1px solid var(--line);border-radius:6px;padding:9px;resize:vertical}
+#out .msg{font-size:.76rem;color:var(--muted);margin-top:8px;font-family:var(--gothic)}
+
+footer{margin-top:34px;padding-top:15px;border-top:1px solid var(--line);
+  font-size:.74rem;color:var(--muted);line-height:1.75;font-family:var(--gothic)}
+</style>
+</head>
+<body>
+<div id="guide"></div>
+<div class="wrap">
+
+<header class="doc-header">
+  <div class="subtitle">{{SUBTITLE}}</div>
+  <h1 class="title">{{TITLE}}</h1>
+  <div class="ref">{{REF}}</div>
+</header>
+
+<div class="scripture-card">
+  <div class="lbl">{{ANCHOR_LABEL}}</div>
+  <p><strong>{{ANCHOR_TEXT}}</strong></p>
+  <div class="note">{{ANCHOR_NOTE}}</div>
+</div>
+
+<div class="legend">
+  {{LEGEND}}
+</div>
+
+<div id="editor">
+  <div class="orig">원문 &nbsp;<b id="edOrig"></b></div>
+  <textarea id="edText" spellcheck="false"></textarea>
+  <div class="btns">
+    <button id="edApply" class="key">✓ 이 글로 수정</button>
+    <button id="edBreak">↵ 호흡 나누기</button>
+    <button id="edRevert">↩ 원문으로</button>
+    <button id="edCancel">닫기</button>
+    <span class="hint">Enter = 줄바꿈(호흡) · ⌘/Ctrl+Enter 적용 · Esc 닫기</span>
+  </div>
+</div>
+
+<div class="bar">
+  <div class="row">
+    <span class="lb">스크롤</span>
+    <button id="scr" class="key">▶ 스크롤</button>
+    <button class="spd on" data-v="36">보통</button>
+    <button class="spd" data-v="22">느림</button>
+    <button class="spd" data-v="54">빠름</button>
+    <button id="sdn">−</button><button id="sup">＋</button>
+    <button id="top">⤒ 처음</button>
+  </div>
+  <div class="row">
+    <span class="lb">낭독</span>
+    <select id="voice"></select>
+    <button class="rate on" data-v="1">1.0×</button>
+    <button class="rate" data-v="1.25">1.25×</button>
+    <button class="rate" data-v="1.5">1.5×</button>
+    <button id="readAll" class="key">▶ 전체 읽기</button>
+    <button id="stop">■ 정지</button>
+    <span id="eta"></span>
+  </div>
+  <div class="row">
+    <span class="lb">보기</span>
+    <button id="font">글꼴: 바탕</button>
+    <button id="sdown">가−</button><button id="sup2">가＋</button>
+    <button id="theme">어둡게</button>
+    <button id="gd">가이드선</button>
+    <button id="clr">표시 지우기</button>
+  </div>
+</div>
+
+<div id="doc">
+{{BLOCKS}}
+</div>
+
+<div id="hist">
+  <h3>수정 이력 <span id="histN"></span></h3>
+  <ol id="histList"></ol>
+</div>
+
+<div style="margin-top:30px;display:flex;flex-wrap:wrap;gap:7px;align-items:center">
+  <button id="complete" class="key" style="font-size:.95rem;padding:10px 22px">✓ 수정 완료 → 원고에 반영</button>
+  <button id="export">📄 원고 내보내기 (최종 전문)</button>
+  <button id="copyHist">✎ 수정 이력 복사</button>
+  <button id="done">✓ 낭독 점검 완료</button>
+  <button id="revAll">↩ 수정 전체 되돌리기</button>
+</div>
+
+<div id="out">
+  <h2>{{SUBMIT_HEADING}}</h2>
+  <textarea id="outText" readonly></textarea>
+  <div class="msg" id="outMsg"></div>
+</div>
+
+<footer>
+  {{FOOTER}}
+</footer>
+
+</div>
+
+<script>
+/* ── 자동 스크롤 ── */
+let sv=36, scrolling=false, raf=null, acc=0;
+function tick(){
+  if(!scrolling) return;
+  acc += sv/60;
+  if(acc>=1){ window.scrollBy(0, Math.floor(acc)); acc-=Math.floor(acc); }
+  raf=requestAnimationFrame(tick);
+}
+function setScroll(on){
+  scrolling=on;
+  const b=document.getElementById('scr');
+  b.classList.toggle('act',on);
+  b.textContent = on? '❙❙ 정지':'▶ 스크롤';
+  if(on){ acc=0; raf=requestAnimationFrame(tick); } else if(raf) cancelAnimationFrame(raf);
+}
+document.getElementById('scr').onclick=()=>setScroll(!scrolling);
+document.querySelectorAll('.spd').forEach(b=>b.onclick=()=>{
+  sv=+b.dataset.v;
+  document.querySelectorAll('.spd').forEach(x=>x.classList.toggle('on',x===b));
+});
+document.getElementById('sup').onclick=()=>sv=Math.min(120,sv+4);
+document.getElementById('sdn').onclick=()=>sv=Math.max(6,sv-4);
+document.getElementById('top').onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+
+/* ── 보기 ── */
+let size=24;
+const applySize=()=>document.querySelectorAll('.block-body p').forEach(p=>p.style.fontSize=size+'px');
+const applyQ=()=>document.querySelectorAll('.block-body blockquote').forEach(q=>q.style.fontSize=(size-2)+'px');
+function setSize(v){ size=Math.max(14,Math.min(56,v)); applySize(); applyQ(); }
+document.getElementById('sup2').onclick=()=>setSize(size+2);
+document.getElementById('sdown').onclick=()=>setSize(size-2);
+setSize(24);
+document.getElementById('font').onclick=function(){
+  document.body.classList.toggle('gothic');
+  this.textContent='글꼴: '+(document.body.classList.contains('gothic')?'고딕':'바탕');
+};
+document.getElementById('theme').onclick=function(){
+  document.body.classList.toggle('dark');
+  this.textContent=document.body.classList.contains('dark')?'밝게':'어둡게';
+};
+document.getElementById('gd').onclick=function(){
+  document.body.classList.toggle('guideon');
+  this.classList.toggle('on',document.body.classList.contains('guideon'));
+};
+
+/* ── TTS ── */
+const ORDER=['민수','소라','수현','유나','지안'];
+let voice=null, rate=1, queue=[], qi=0, speaking=false;
+function loadVoices(){
+  const all=speechSynthesis.getVoices();
+  const ko=all.filter(v=>/^ko/i.test(v.lang));
+  const pick=p=>{
+    const c=ko.filter(v=>v.name.includes(p));
+    return c.find(v=>/프리미엄|Premium/i.test(v.name))
+        || c.find(v=>/고품질|Enhanced/i.test(v.name)) || c[0] || null;
+  };
+  const sel=document.getElementById('voice'); sel.innerHTML='';
+  const found=[];
+  ORDER.forEach(p=>{ const v=pick(p); if(v) found.push([p,v]); });
+  if(!found.length && ko.length) found.push([ko[0].name, ko[0]]);
+  found.forEach(([label,v],i)=>{
+    const o=document.createElement('option'); o.value=i; o.textContent=label; sel.appendChild(o);
+  });
+  voice = found.length? found[0][1] : null;
+  sel.onchange=()=>{ voice=found[sel.value][1]; };
+}
+speechSynthesis.onvoiceschanged=loadVoices; loadVoices();
+document.querySelectorAll('.rate').forEach(b=>b.onclick=()=>{
+  rate=+b.dataset.v;
+  document.querySelectorAll('.rate').forEach(x=>x.classList.toggle('on',x===b));
+});
+
+/* 낭독 텍스트: .no-tts · 버튼 · 블록 제목 제외 */
+function blockText(sec){
+  const c=sec.cloneNode(true);
+  c.querySelectorAll('.no-tts,.btn-read,.block-title').forEach(e=>e.remove());
+  return c.textContent.replace(/\s+/g,' ').trim();
+}
+/* 낭독 중인 블록을 **화면 상단**에 세운다 — 읽는 첫 문장이 맨 위에 보여야
+   설교자의 눈이 아래로 따라 내려갈 수 있다(중앙 정렬은 이미 읽은 줄을 위에 남긴다).
+   스티키 컨트롤바 높이를 실측해 그만큼 내려 붙인다(바가 2~3줄로 접힐 수 있으므로 고정값 금지). */
+function barGap(){
+  const b=document.querySelector('.bar');
+  return (b? b.getBoundingClientRect().height : 0) + 12;
+}
+function hl(sec){
+  document.querySelectorAll('.sermon-block.now').forEach(e=>e.classList.remove('now'));
+  if(!sec) return;
+  sec.classList.add('now');
+  sec.style.scrollMarginTop = barGap()+'px';
+  sec.scrollIntoView({block:'start', behavior:'smooth'});
+}
+function speakNext(){
+  if(!speaking || qi>=queue.length){ stopTTS(); return; }
+  const sec=queue[qi];
+  hl(sec);
+  const u=new SpeechSynthesisUtterance(blockText(sec));
+  u.lang='ko-KR'; u.rate=rate; if(voice) u.voice=voice;
+  u.onend=u.onerror=()=>{ if(speaking){ qi++; speakNext(); } };
+  speechSynthesis.speak(u);
+}
+function startTTS(list){
+  stopTTS(); queue=list; qi=0; speaking=true;
+  document.getElementById('readAll').classList.add('act');
+  speakNext();
+}
+function stopTTS(){
+  speaking=false; speechSynthesis.cancel(); hl(null);
+  document.getElementById('readAll').classList.remove('act');
+}
+document.getElementById('readAll').onclick=()=>{
+  if(speaking) stopTTS();
+  else startTTS([...document.querySelectorAll('.sermon-block')]);
+};
+document.getElementById('stop').onclick=stopTTS;
+document.querySelectorAll('.btn-read').forEach(b=>b.onclick=e=>{
+  e.stopPropagation();
+  startTTS([document.getElementById(b.dataset.b)]);
+});
+
+/* ── 예상 낭독 시간 (분당 330자) — 수정하면 다시 계산 ── */
+let etaChars=0;
+function updateEta(){
+  let n=0;
+  document.querySelectorAll('.sermon-block').forEach(s=>{
+    n += (blockText(s).match(/[가-힣0-9A-Za-z]/g)||[]).length;
+  });
+  etaChars=n;
+  document.getElementById('eta').textContent =
+    `⏱ 예상 낭독 약 ${Math.round(n/330)}분 (${n.toLocaleString()}자)`;
+}
+updateEta();
+
+/* ══════════════════════════════════════════════
+   낱말 단위 선택 → 편집  /  문단 표시
+   ══════════════════════════════════════════════ */
+const KEY   ='tnt3:프롬프터:눅19,1-10';        // 문단 표시
+const KEYED ='tnt3:프롬프터:편집:눅19,1-10';    // 낱말 편집
+const KEYBASE='{{STORAGE_KEY}}'; // 본문 기준선 버전
+
+/* ★ 기준선 검사 (필수) — 원고를 재생성해 본문이 바뀌면 저장된 편집·표시는
+   낡은 위치를 가리키므로 반드시 폐기한다. 그러지 않으면 저장값 복원이
+   새 본문을 덮어써서 설교자가 고친 결과가 옛 상태로 되돌아간다.
+   본문을 재생성할 때마다 BASE 값을 올린다. */
+const BASE='{{BASELINE}}';
+if(localStorage.getItem(KEYBASE)!==BASE){
+  try{
+    localStorage.removeItem(KEYED);
+    localStorage.removeItem(KEY);
+    localStorage.removeItem('tnt3:프롬프터:완료:눅19,1-10');
+    localStorage.setItem(KEYBASE, BASE);
+  }catch(e){}
+}
+
+function marks(){ try{ return JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ return []; } }
+function saveMarks(a){ try{ localStorage.setItem(KEY,JSON.stringify(a)); }catch(e){} }
+let store={}; try{ store=JSON.parse(localStorage.getItem(KEYED)||'{}'); }catch(e){ store={}; }
+function saveStore(){ try{ localStorage.setItem(KEYED,JSON.stringify(store)); }catch(e){} }
+
+/* 텍스트 노드만 낱말 span으로 감싼다 — <br>·<strong> 구조는 그대로 */
+function tokenize(root){
+  const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const ts=[]; let n;
+  while(n=walk.nextNode()) ts.push(n);
+  ts.forEach(t=>{
+    if(!t.nodeValue || !t.nodeValue.trim()) return;
+    if(t.parentElement.classList.contains('w')) return;
+    const frag=document.createDocumentFragment();
+    t.nodeValue.split(/(\s+)/).forEach(part=>{
+      if(!part) return;
+      if(/^\s+$/.test(part)) frag.appendChild(document.createTextNode(part));
+      else{ const s=document.createElement('span'); s.className='w'; s.textContent=part; frag.appendChild(s); }
+    });
+    t.parentNode.replaceChild(frag,t);
+  });
+}
+
+const units=[...document.querySelectorAll('.block-body p, .block-body blockquote')];
+units.forEach((el,i)=>{
+  el.dataset.i=i;
+  const st=store[i];
+  if(st && st.cur) el.innerHTML=st.cur;   // 저장된 수정 복원(이미 낱말 span 상태)
+  else tokenize(el);
+  if(marks().includes(i)) el.classList.add('flag');
+});
+
+/* ── 선택 → 낱말 블록 ── */
+let cur=null;   // {unit, words}
+function clearSel(){ document.querySelectorAll('.w.sel').forEach(w=>w.classList.remove('sel')); }
+
+function wordsFromSelection(){
+  const sel=window.getSelection();
+  if(!sel || !sel.rangeCount || sel.isCollapsed) return null;
+  const r=sel.getRangeAt(0);
+  const startEl = r.startContainer.nodeType===3 ? r.startContainer.parentElement : r.startContainer;
+  const unit = startEl && startEl.closest ? startEl.closest('.block-body p, .block-body blockquote') : null;
+  if(!unit) return null;
+  const words=[...unit.querySelectorAll('.w')].filter(w=>{
+    try{ return r.intersectsNode(w); }catch(e){ return false; }
+  });
+  return words.length ? {unit, words} : null;
+}
+
+const ed      = document.getElementById('editor');
+const edOrig  = document.getElementById('edOrig');
+const edText  = document.getElementById('edText');
+
+function openEditor(sel){
+  cur=sel; clearSel();
+  sel.words.forEach(w=>w.classList.add('sel'));
+  const orig=sel.words.map(w=>w.textContent).join(' ');
+  edOrig.textContent=orig;
+  edText.value=orig;
+  const last=sel.words[sel.words.length-1].getBoundingClientRect();
+  const first=sel.words[0].getBoundingClientRect();
+  ed.style.display='block';
+  const w=ed.offsetWidth;
+  let left=window.scrollX+Math.min(first.left, window.innerWidth-w-16);
+  ed.style.left=Math.max(window.scrollX+12,left)+'px';
+  ed.style.top =(window.scrollY+last.bottom+10)+'px';
+  edText.focus(); edText.select();
+}
+function closeEditor(){ ed.style.display='none'; clearSel(); cur=null; }
+
+document.getElementById('doc').addEventListener('mouseup',e=>{
+  if(e.target.closest('.btn-read')) return;
+  setTimeout(()=>{
+    const sel=wordsFromSelection();
+    if(sel){ openEditor(sel); return; }
+    // 드래그가 아니면(클릭) 문단 표시 토글
+    const u=e.target.closest('.block-body p, .block-body blockquote');
+    if(u && ed.style.display!=='block'){
+      u.classList.toggle('flag');
+      saveMarks(units.filter(x=>x.classList.contains('flag')).map(x=>+x.dataset.i));
+    }
+  },0);
+});
+
+/* ── 적용 / 되돌리기 ── */
+function applyEdit(newText){
+  if(!cur) return;
+  const {unit,words}=cur;
+  const i=unit.dataset.i;
+  const orig=words.map(w=>w.textContent).join(' ');
+  const txt=newText.trim();
+  if(!txt || txt===orig){ closeEditor(); return; }
+  if(!store[i]) store[i]={orig:unit.innerHTML, log:[]};
+  const span=document.createElement('span');
+  span.className='edited'; span.dataset.orig=orig;
+  // 편집 상자의 줄바꿈을 <br>(호흡)로 옮긴다 — 강단 낭독의 핵심
+  txt.split(/\n+/).forEach((line,k)=>{
+    if(k) span.appendChild(document.createElement('br'));
+    span.appendChild(document.createTextNode(line.trim()));
+  });
+  const r=document.createRange();
+  r.setStartBefore(words[0]); r.setEndAfter(words[words.length-1]);
+  r.deleteContents(); r.insertNode(span);
+  tokenize(span);
+  store[i].log.push({from:orig,to:txt});
+  store[i].cur=unit.innerHTML;
+  saveStore(); closeEditor(); renderHist(); updateEta();
+}
+function revertUnit(i){
+  const st=store[i]; if(!st) return;
+  units[i].innerHTML=st.orig;
+  delete store[i]; saveStore(); renderHist(); updateEta();
+}
+document.getElementById('edApply').onclick=()=>applyEdit(edText.value);
+/* 문장 종결·연결 경계에서 자동으로 호흡을 나눠 준다(설교자가 손질할 초안) */
+document.getElementById('edBreak').onclick=()=>{
+  edText.value = edText.value
+    .replace(/\n+/g,' ').replace(/\s+/g,' ').trim()
+    .replace(/([.!?])\s+/g,'$1\n')
+    .replace(/(습니다|입니다|합니다|하십니다|셨습니다|것입니다)([,.])\s*/g,'$1$2\n')
+    .replace(/(지만|는데|면서|으므로|때문에|라고|하고),?\s+/g,'$&\n')
+    .replace(/,\s+/g,',\n')
+    .split('\n').map(s=>s.trim()).filter(Boolean).join('\n');
+  edText.focus();
+};
+document.getElementById('edCancel').onclick=closeEditor;
+document.getElementById('edRevert').onclick=()=>{ if(cur) revertUnit(cur.unit.dataset.i); closeEditor(); };
+edText.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){ e.preventDefault(); applyEdit(edText.value); }
+  else if(e.key==='Escape'){ e.preventDefault(); closeEditor(); }
+});
+document.addEventListener('mousedown',e=>{
+  if(ed.style.display==='block' && !ed.contains(e.target)) closeEditor();
+});
+document.getElementById('clr').onclick=()=>{
+  units.forEach(u=>u.classList.remove('flag')); saveMarks([]);
+};
+document.getElementById('revAll').onclick=()=>{
+  Object.keys(store).slice().forEach(i=>revertUnit(i));
+};
+
+/* ── 수정 이력 ── */
+function allEdits(){
+  const out=[];
+  Object.keys(store).sort((a,b)=>a-b).forEach(i=>{
+    (store[i].log||[]).forEach(e=>{
+      const sec=units[i].closest('.sermon-block');
+      out.push({i, no:sec.querySelector('.no').textContent,
+                vs:sec.querySelector('.vs').textContent, ...e});
+    });
+  });
+  return out;
+}
+function renderHist(){
+  const list=allEdits(), box=document.getElementById('hist'), ol=document.getElementById('histList');
+  document.getElementById('histN').textContent = list.length? `(${list.length}군데)` : '';
+  box.style.display = list.length? 'block':'none';
+  ol.innerHTML = list.map(e=>
+    `<li><span class="f">${e.from}</span> → <span class="t">${e.to}</span>
+     <button class="rv" data-i="${e.i}">되돌리기</button></li>`).join('');
+  ol.querySelectorAll('.rv').forEach(b=>b.onclick=()=>revertUnit(b.dataset.i));
+}
+renderHist();
+
+/* ── 낭독 점검 완료 ── */
+document.getElementById('done').onclick=async ()=>{
+  const box=document.getElementById('out'), ta=document.getElementById('outText'),
+        msg=document.getElementById('outMsg');
+  const flagged=units.filter(u=>u.classList.contains('flag'));
+  const lines=flagged.map(u=>{
+    const sec=u.closest('.sermon-block');
+    const no=sec.querySelector('.no').textContent;
+    const vs=sec.querySelector('.vs').textContent;
+    const t=u.textContent.replace(/\s+/g,' ').trim();
+    return `[${no} · ${vs}]\n  ${t}`;
+  });
+  const eta=document.getElementById('eta').textContent;
+  const eds=allEdits();
+  const edBlock = eds.length
+    ? `\n\n── 수정 ${eds.length}군데 (설교자 직접 수정) ──\n\n`
+      + eds.map(e=>`[${e.no} · ${e.vs}]\n  원문: ${e.from}\n  수정: ${e.to}`).join('\n\n')
+    : `\n\n수정 없음`;
+  const out = `[3단계 낭독 점검 — 눅 19:1-10]\n${eta}\n\n`
+    + `소리 내어 읽기: 완료\n`
+    + (lines.length
+        ? `걸린 곳 ${lines.length}군데 (숨이 막히거나 해설자로 돌아간 자리)\n\n${lines.join('\n\n')}`
+        : `걸린 곳 없음 — "말처럼 들린다"고 확인함`)
+    + edBlock;
+  ta.value=out; box.style.display='block';
+  box.scrollIntoView({behavior:'smooth',block:'center'});
+  try{
+    await navigator.clipboard.writeText(out);
+    msg.textContent='복사되었습니다. 클로드 대화창에 붙여넣기(⌘/Ctrl+V) 하시면 3단계 게이트로 회부합니다.';
+  }catch(e){
+    ta.select();
+    msg.textContent='자동 복사가 막혔습니다. 위 상자 내용을 직접 복사(⌘/Ctrl+C)해 붙여넣어 주십시오.';
+  }
+};
+
+/* ── 수정 이력 전체 복사 (붙여넣기용) ── */
+function histText(){
+  const eds=allEdits();
+  if(!eds.length) return null;
+  const body=eds.map((e,i)=>
+    `${i+1}. [${e.no} · ${e.vs}]\n   원문: ${e.from}\n   수정: ${e.to}`).join('\n\n');
+  return `[3단계 수정 이력 — 눅 19:1-10 · ${eds.length}군데]\n`
+       + `※ 설교자가 프롬프터에서 직접 고친 것입니다. 원문 → 수정 짝으로만 적었습니다.\n\n${body}`;
+}
+document.getElementById('copyHist').onclick=async ()=>{
+  const box=document.getElementById('out'), ta=document.getElementById('outText'),
+        msg=document.getElementById('outMsg');
+  const t=histText();
+  box.style.display='block';
+  box.querySelector('h2').textContent='3단계 수정 이력';
+  if(!t){
+    ta.value=''; msg.textContent='아직 수정한 곳이 없습니다. 낱말을 끌어서 선택하면 편집 상자가 열립니다.';
+    box.scrollIntoView({behavior:'smooth',block:'center'}); return;
+  }
+  ta.value=t;
+  box.scrollIntoView({behavior:'smooth',block:'center'});
+  try{
+    await navigator.clipboard.writeText(t);
+    msg.textContent='복사되었습니다. 클로드 대화창에 붙여넣기(⌘/Ctrl+V) 하시면 됩니다. '
+      + '다만 원고 파일 갱신에는 「원고 내보내기」의 최종 전문이 필요합니다 — 이력만으로는 복원할 수 없습니다.';
+  }catch(e){
+    ta.select();
+    msg.textContent='자동 복사가 막혔습니다. 위 상자 내용을 직접 복사(⌘/Ctrl+C)해 붙여넣어 주십시오.';
+  }
+};
+
+/* ══════════════════════════════════════════════
+   원고 내보내기 — 수정이 반영된 최종 전문
+   (수정 이력만으로는 최종 원고를 복원할 수 없다.
+    코치가 원고 .md를 갱신하려면 이 전문이 필요하다.)
+   ══════════════════════════════════════════════ */
+function unitText(el){
+  const c=el.cloneNode(true);
+  c.querySelectorAll('.no-tts,.btn-read').forEach(e=>e.remove());
+  c.querySelectorAll('br').forEach(b=>b.replaceWith(document.createTextNode('\n')));
+  return c.textContent.split('\n').map(s=>s.replace(/\s+/g,' ').trim())
+          .filter(Boolean).join('\n');
+}
+function buildFinal(){
+  const parts=[];
+  document.querySelectorAll('.sermon-block').forEach(sec=>{
+    const no=sec.querySelector('.no').textContent.trim();
+    const nm=sec.querySelector('.nm').textContent.trim();
+    const vs=sec.querySelector('.vs').textContent.trim();
+    const body=[...sec.querySelectorAll('.block-body p, .block-body blockquote')]
+      .map(u=>{
+        const t=unitText(u);
+        return u.tagName==='BLOCKQUOTE' ? t.split('\n').map(l=>'> '+l).join('\n') : t;
+      }).filter(Boolean).join('\n\n');
+    parts.push(`## ${no} — ${nm}  [${vs}]\n\n${body}`);
+  });
+  const eds=allEdits();
+  return {
+    n:eds.length,
+    text:`[3단계 원고 최종 전문 — 눅 19:1-10]\n`
+      + `${document.getElementById('eta').textContent} · 수정 ${eds.length}군데 반영\n`
+      + `※ 인용(>)은 성경 인용 블록입니다. 줄바꿈은 낭독 호흡 단위입니다.\n\n`
+      + parts.join('\n\n')
+  };
+}
+async function emit(title, text, note){
+  const box=document.getElementById('out'), ta=document.getElementById('outText'),
+        msg=document.getElementById('outMsg');
+  ta.value=text; box.style.display='block';
+  box.querySelector('h2').textContent=title;
+  box.scrollIntoView({behavior:'smooth',block:'center'});
+  try{ await navigator.clipboard.writeText(text); msg.textContent=note.ok; }
+  catch(e){ ta.select(); msg.textContent=note.fail; }
+}
+document.getElementById('export').onclick=()=>{
+  const f=buildFinal();
+  emit('3단계 원고 최종 전문', f.text, {
+    ok:'복사되었습니다. 클로드 대화창에 붙여넣기(⌘/Ctrl+V) 하시면 원고 파일에 그대로 반영합니다.',
+    fail:'자동 복사가 막혔습니다. 위 상자 내용을 직접 복사(⌘/Ctrl+C)해 붙여넣어 주십시오.'});
+};
+
+/* ── 수정 완료 — 클로드가 이 창에서 직접 읽어 원고에 반영 ── */
+document.getElementById('complete').onclick=()=>{
+  const f=buildFinal();
+  // 클로드가 읽을 고정 위치. id·data 속성을 바꾸지 말 것.
+  let pre=document.getElementById('finalDoc');
+  if(!pre){
+    pre=document.createElement('pre');
+    pre.id='finalDoc';
+    pre.style.cssText='display:none;white-space:pre-wrap';
+    document.body.appendChild(pre);
+  }
+  pre.textContent=f.text;
+  pre.dataset.done='1';
+  pre.dataset.count=f.n;
+  pre.dataset.at=new Date().toISOString();
+  try{ localStorage.setItem('tnt3:프롬프터:완료:눅19,1-10',
+        JSON.stringify({at:pre.dataset.at, n:f.n})); }catch(e){}
+  document.getElementById('complete').classList.add('act');
+  emit(`3단계 수정 완료 — 원고 반영 대기 (수정 ${f.n}군데)`, f.text, {
+    ok:`수정 완료 표시를 했습니다. 이 창을 열어 둔 채 클로드에게 "수정완료"라고 말씀하시면, `
+      +`클로드가 이 화면에서 최종 원고를 직접 읽어 03_스토리텔링원자료에 반영합니다. `
+      +`(클립보드에도 복사했으니 붙여넣으셔도 됩니다.)`,
+    fail:`수정 완료 표시를 했습니다. 이 창을 열어 둔 채 클로드에게 "수정완료"라고 말씀하시면 `
+      +`클로드가 직접 읽어 갑니다. 또는 위 상자를 직접 복사(⌘/Ctrl+C)해 붙여넣어 주십시오.`});
+};
+
+/* ── 단축키 ── */
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return;
+  const secs=[...document.querySelectorAll('.sermon-block')];
+  if(e.code==='Space'){ e.preventDefault(); setScroll(!scrolling); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); sv=Math.min(120,sv+4); }
+  else if(e.key==='ArrowDown'){ e.preventDefault(); sv=Math.max(6,sv-4); }
+  else if(e.key==='Home'){ e.preventDefault(); window.scrollTo({top:0,behavior:'smooth'}); }
+  else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+    e.preventDefault();
+    const y=window.scrollY+140;
+    let idx=secs.findIndex(s=>s.offsetTop>y);
+    if(e.key==='ArrowLeft'){ idx=idx<=0?secs.length-1:idx-2; if(idx<0)idx=0; }
+    else if(idx<0) idx=secs.length-1;
+    secs[Math.max(0,Math.min(secs.length-1,idx))]
+      .scrollIntoView({block:'start',behavior:'smooth'});
+  }
+});
+window.addEventListener('beforeunload',()=>speechSynthesis.cancel());
+</script>
+</body>
+</html>

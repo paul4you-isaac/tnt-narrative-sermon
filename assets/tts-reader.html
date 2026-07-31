@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}} — {{REF}}</title>
+<style>
+:root{
+  --bg:#fbfaf7; --fg:#1a1917; --muted:#6b6862; --line:#e3ded4;
+  --card:#fff; --accent:#7a5c2e; --soft:#f3ecdf;
+  --num:#a89b84; --now:#fff3cf; --ul:#b8860b;
+  --serif:"Noto Serif KR","Apple SD Gothic Neo","Malgun Gothic",serif;
+  --mono:"SF Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#15140f; --fg:#ece8de; --muted:#98928a; --line:#2e2b23;
+    --card:#1d1b15; --accent:#d9bb7e; --soft:#282318;
+    --num:#6d6656; --now:#3b3218; --ul:#d9bb7e;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font-family:var(--serif);line-height:1.85;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:800px;margin:0 auto;padding:18px 16px 90px}
+
+header.doc{border-bottom:2px solid var(--accent);padding-bottom:12px;margin-bottom:14px}
+.ref{font-size:.94rem;font-weight:700;color:var(--accent)}
+h1{font-size:1.3rem;margin:.25em 0 .3em}
+.help{font-size:.78rem;color:var(--muted);line-height:1.65}
+
+.bar{
+  position:sticky;top:0;z-index:20;background:var(--bg);
+  border-bottom:1px solid var(--line);padding:9px 0 11px;margin-bottom:20px;
+}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row+.row{margin-top:7px}
+.lbl{font-size:.7rem;color:var(--muted);min-width:40px}
+button,select{
+  font-family:inherit;font-size:.82rem;color:var(--fg);background:var(--card);
+  border:1px solid var(--line);border-radius:6px;padding:5px 11px;cursor:pointer;
+}
+button:hover{border-color:var(--accent)}
+button.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+button.play{border-color:var(--accent);color:var(--accent);font-weight:600}
+
+/* ── 본문 (구문 배열) ── */
+/* 내어쓰기 폭은 rem으로 통일 — em은 요소별 글꼴 크기에 따라 어긋난다 */
+.verse{margin:0 0 15px;padding-left:2.6rem}
+.vn{
+  display:inline-block;width:2.6rem;font-family:var(--mono);
+  font-size:.68rem;font-weight:700;color:var(--num);
+  user-select:none;
+  text-indent:0;   /* 첫 줄의 음수 text-indent 상속을 끊는다(숫자가 밀려나 사라짐 방지) */
+}
+.ln{
+  display:block;font-size:1.12rem;
+  padding:1px 4px;margin-left:-4px;border-radius:4px;
+  cursor:pointer;transition:background .1s;
+}
+/* 절 번호를 그 절 첫 줄과 같은 줄에 매달아 놓는다(내어쓰기) */
+.ln.first{text-indent:-2.6rem}
+.ln.d1{margin-left:calc(1.5em - 4px)}
+.ln:hover{background:var(--soft)}
+.ln.mark .t{
+  text-decoration:underline;text-decoration-color:var(--ul);
+  text-decoration-thickness:2px;text-underline-offset:4px;
+}
+.ln.now{background:var(--now)}
+
+/* ── 제출 상자 ── */
+#out{margin-top:26px;padding:14px;border:1.5px solid var(--accent);
+  border-radius:9px;background:var(--card);display:none}
+#out h2{font-size:.84rem;margin:0 0 8px;color:var(--accent)}
+#out textarea{
+  width:100%;min-height:170px;font-family:var(--mono);font-size:.8rem;
+  line-height:1.6;color:var(--fg);background:var(--bg);
+  border:1px solid var(--line);border-radius:6px;padding:9px;resize:vertical;
+}
+#out .msg{font-size:.78rem;color:var(--muted);margin-top:8px}
+footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:.72rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <div class="ref">{{REF}}</div>
+  <h1>{{TITLE}}</h1>
+  <p class="help">
+    ① 소리 내어 빠르게 1~2회 · ② 천천히 1~2회(<strong>걸리는 줄을 눌러 밑줄</strong>) ·
+    ③ 표정과 움직임을 상상하며 1회 · ④ 재생 버튼으로 반복 청취.<br>
+    줄을 누르면 밑줄이 켜지고 다시 누르면 꺼집니다. 밑줄은 자동 저장되니 새로고침해도 남습니다.
+    다 하시면 맨 아래 <strong>마치기</strong>를 누르십시오.
+  </p>
+</header>
+
+<div class="bar">
+  <div class="row">
+    <span class="lbl">역본</span>
+    <button class="ver on" data-v="개역개정">개역개정</button>
+    <button class="ver" data-v="새한글">새한글</button>
+  </div>
+  <div class="row">
+    <span class="lbl">성우</span>
+    <select id="voice">
+      <option value="민수">민수</option>
+      <option value="지안">지안</option>
+      <option value="수현">수현</option>
+      <option value="유나" selected>유나</option>
+    </select>
+    <button class="spd on" data-s="1">1.0×</button>
+    <button class="spd" data-s="1.25">1.25×</button>
+    <button class="spd" data-s="1.5">1.5×</button>
+  </div>
+  <div class="row">
+    <span class="lbl">재생</span>
+    <button id="play" class="play">▶ 재생</button>
+    <button id="pause">‖ 일시정지</button>
+    <button id="stop">■ 정지</button>
+    <button id="clear">밑줄 지우기</button>
+  </div>
+</div>
+
+<div id="text"></div>
+
+<div style="margin-top:26px">
+  <button id="done" class="play" style="font-size:.92rem;padding:9px 20px">✓ 마치기 — 밑줄 제출</button>
+</div>
+
+<div id="out">
+  <h2>{{SUBMIT_HEADING}}</h2>
+  <textarea id="outText" readonly></textarea>
+  <div class="msg" id="outMsg"></div>
+</div>
+
+<footer>
+  성경전서 개역개정판 © 대한성서공회 1998 · 새한글성경 © 대한성서공회 2024.
+  본문은 설교자가 제공한 텍스트를 그대로 사용했습니다(무수정).
+  줄나눔·들여쓰기는 김상훈 「원어성경 구문읽기」의 구문 배열을 규칙 기반으로 근사한 것으로,
+  확정적 문법 분석이 아니라 관찰을 돕는 시각 자료입니다.
+</footer>
+
+</div>
+
+<script>
+/* ── 본문 (1단계 확정 텍스트, 본문 구획만) ───────────── */
+const TEXT = {
+{{TEXT_DATA}}
+};
+
+/* ── 구문 배열 렌더러 (1단계와 동일 규칙) ───────────── */
+const CONN = /(?:하시니라|하시니|하시매|하니라|여짜오되|이르시되|이르되|하였더라|하더라|하거늘|하시고|하니|하되|하며|하매|거늘|더라|니라|지라|때문에|위하여|려고|도록|으므로|므로|기에|면서|지만|는데|은데|아서|어서|여서|으니|으매|이요|이며|이고|고|며|서|니|면|나)$/;
+const SENT_END = /[.!?…]["”’']?$/;
+const AUX_NEXT = /^(?:하|했|해|계|있|없|말|싶|드|버|못|같|되|주|보)/;
+
+function phrase(text){
+  const out=[]; let buf=[], q=0;
+  const w=String(text).split(/\s+/).filter(Boolean);
+  const flush=()=>{ if(buf.length){ out.push({d:q>0?1:0,t:buf.join(" ")}); buf=[]; } };
+  for(let i=0;i<w.length;i++){
+    const cur=w[i], nxt=w[i+1]||"";
+    if(/^[“‘"]/.test(cur)) q++;
+    buf.push(cur);
+    const line=buf.join(" ");
+    const aux = nxt && nxt.replace(/["”’'.,!?…]/g,"").length<=4 && AUX_NEXT.test(nxt);
+    if(SENT_END.test(cur)) flush();
+    else if(/,$/.test(cur) && line.length>=6) flush();
+    else if(!aux && CONN.test(cur.replace(/["”’']+$/,"")) && line.length>=12) flush();
+    if(/[”’]/.test(cur) || (/"/.test(cur) && !/^"/.test(cur))) q=Math.max(0,q-1);
+  }
+  flush();
+  return out.length?out:[{d:0,t:text}];
+}
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+/* ── 상태 ──────────────────────────────── */
+let ver="개역개정", rate=1, lines=[], idx=0, playing=false, paused=false;
+const host=document.getElementById("text");
+const keyOf = () => "{{STORAGE_KEY}}:"+ver;
+
+function load(){ try{ return JSON.parse(localStorage.getItem(keyOf())||"[]"); }catch(e){ return []; } }
+function save(a){ try{ localStorage.setItem(keyOf(), JSON.stringify(a)); }catch(e){} }
+
+function build(){
+  stop();
+  host.innerHTML="";
+  lines=[];
+  const marks=new Set(load());
+  const nums=Object.keys(TEXT[ver]).map(Number).sort((a,b)=>a-b);
+  for(const n of nums){
+    const p=document.createElement("p");
+    p.className="verse";
+    let html="";
+    phrase(TEXT[ver][n]).forEach((seg,j)=>{
+      const id=n+"-"+j;
+      lines.push({id:id, vn:n, t:seg.t});
+      const cls = "ln" + (j===0?" first":"") + (seg.d?" d1":"") + (marks.has(id)?" mark":"");
+      const num = j===0 ? `<span class="vn">${n}</span>` : "";
+      html+=`<span class="${cls}" data-id="${id}">${num}<span class="t">${esc(seg.t)}</span></span>`;
+    });
+    p.innerHTML=html;
+    host.appendChild(p);
+  }
+  host.querySelectorAll(".ln").forEach(el=>{
+    el.addEventListener("click",()=>{
+      el.classList.toggle("mark");
+      const m=[...host.querySelectorAll(".ln.mark")].map(x=>x.dataset.id);
+      save(m);
+    });
+  });
+}
+
+/* ── 음성 (프리미엄 우선, UI 비노출) ──────── */
+function pickVoice(persona){
+  const all=speechSynthesis.getVoices();
+  const ko=all.filter(v=>/^ko/i.test(v.lang));
+  const c=ko.filter(v=>v.name.includes(persona));
+  return c.find(v=>/프리미엄|Premium/i.test(v.name))
+      || c.find(v=>/고품질|Enhanced/i.test(v.name))
+      || c[0] || ko[0] || null;
+}
+speechSynthesis.onvoiceschanged = ()=>{};
+
+/* ── 재생 (줄 단위 순차 낭독 + 현재 줄 하이라이트) ── */
+function hl(i){
+  host.querySelectorAll(".ln.now").forEach(e=>e.classList.remove("now"));
+  if(i<0||i>=lines.length) return;
+  const el=host.querySelector(`.ln[data-id="${lines[i].id}"]`);
+  if(el){
+    el.classList.add("now");
+    el.scrollIntoView({block:"center",behavior:"smooth"});
+  }
+}
+function speak(){
+  if(!playing || idx>=lines.length){ stop(); return; }
+  hl(idx);
+  const u=new SpeechSynthesisUtterance(lines[idx].t);
+  u.lang="ko-KR"; u.rate=rate;
+  const v=pickVoice(document.getElementById("voice").value);
+  if(v) u.voice=v;
+  u.onend=()=>{ if(playing){ idx++; speak(); } };
+  u.onerror=()=>{ if(playing){ idx++; speak(); } };
+  speechSynthesis.speak(u);
+}
+function play(){
+  if(paused){ paused=false; speechSynthesis.resume(); return; }
+  if(playing) return;
+  playing=true; idx=0;
+  speechSynthesis.cancel();
+  speak();
+}
+function stop(){
+  playing=false; paused=false; idx=0;
+  speechSynthesis.cancel();
+  host.querySelectorAll(".ln.now").forEach(e=>e.classList.remove("now"));
+}
+document.getElementById("play").addEventListener("click",play);
+document.getElementById("pause").addEventListener("click",()=>{
+  if(playing && !paused){ paused=true; speechSynthesis.pause(); }
+});
+document.getElementById("stop").addEventListener("click",stop);
+document.getElementById("clear").addEventListener("click",()=>{
+  host.querySelectorAll(".ln.mark").forEach(e=>e.classList.remove("mark"));
+  save([]);
+});
+document.querySelectorAll("button.ver").forEach(b=>b.addEventListener("click",()=>{
+  ver=b.dataset.v;
+  document.querySelectorAll("button.ver").forEach(x=>x.classList.toggle("on",x===b));
+  build();
+}));
+document.querySelectorAll("button.spd").forEach(b=>b.addEventListener("click",()=>{
+  rate=parseFloat(b.dataset.s);
+  document.querySelectorAll("button.spd").forEach(x=>x.classList.toggle("on",x===b));
+}));
+
+/* ── 마치기 → 밑줄 제출 ─────────────────── */
+document.getElementById("done").addEventListener("click",async ()=>{
+  const marked=[...host.querySelectorAll(".ln.mark")].map(e=>e.dataset.id);
+  const box=document.getElementById("out"),
+        ta=document.getElementById("outText"),
+        msg=document.getElementById("outMsg");
+  if(!marked.length){
+    box.style.display="block";
+    ta.value="";
+    msg.textContent="걸리는 단어·문장에 먼저 밑줄을 그어 주십시오. 줄을 누르면 밑줄이 켜집니다.";
+    box.scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  const set=new Set(marked);
+  const body=lines.filter(l=>set.has(l.id))
+    .map(l=>`${l.vn}절  ${l.t}`).join("\n");
+  const out=`[2단계 밑줄 제출 — 눅 19:1-10 · ${ver}]\n\n${body}`;
+  ta.value=out;
+  box.style.display="block";
+  box.scrollIntoView({behavior:"smooth",block:"center"});
+  try{
+    await navigator.clipboard.writeText(out);
+    msg.textContent="밑줄 요약이 복사되었습니다. 클로드 대화창에 붙여넣기(⌘/Ctrl+V) 하시면 다섯 렌즈 관찰을 이어갑니다.";
+  }catch(e){
+    ta.select();
+    msg.textContent="자동 복사가 막혔습니다. 위 상자의 내용을 직접 복사(⌘/Ctrl+C)해서 클로드 대화창에 붙여넣어 주십시오.";
+  }
+});
+
+window.addEventListener("beforeunload",()=>speechSynthesis.cancel());
+build();
+</script>
+</body>
+</html>
