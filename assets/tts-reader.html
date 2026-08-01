@@ -64,11 +64,17 @@ button.play{border-color:var(--accent);color:var(--accent);font-weight:600}
 /* 절 번호를 그 절 첫 줄과 같은 줄에 매달아 놓는다(내어쓰기) */
 .ln.first{text-indent:-2.6rem}
 .ln.d1{margin-left:calc(1.5em - 4px)}
-.ln:hover{background:var(--soft)}
-.ln.mark .t{
+
+.w{cursor:pointer;border-radius:3px;transition:background .08s}
+.w:hover{background:var(--soft)}
+.w.u{
   text-decoration:underline;text-decoration-color:var(--ul);
   text-decoration-thickness:2px;text-underline-offset:4px;
 }
+/* 연속 밑줄이 한 덩어리로 *보이도록* 낱말 사이 공백에도 밑줄을 잇는다.
+   덩어리 판정은 markedBlocks() 가 하고, 이건 눈에 보이게 하는 것뿐이다. */
+.sp.u{text-decoration:underline;text-decoration-color:var(--ul);
+  text-decoration-thickness:2px;text-underline-offset:4px}
 .ln.now{background:var(--now)}
 
 /* ── 제출 상자 ── */
@@ -92,9 +98,9 @@ footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);
   <div class="ref">{{REF}}</div>
   <h1>{{TITLE}}</h1>
   <p class="help">
-    ① 소리 내어 빠르게 1~2회 · ② 천천히 1~2회(<strong>걸리는 줄을 눌러 밑줄</strong>) ·
+    ① 소리 내어 빠르게 1~2회 · ② 천천히 1~2회(<strong>걸리는 낱말을 눌러 밑줄</strong>) ·
     ③ 표정과 움직임을 상상하며 1회 · ④ 재생 버튼으로 반복 청취.<br>
-    줄을 누르면 밑줄이 켜지고 다시 누르면 꺼집니다. 밑줄은 자동 저장되니 새로고침해도 남습니다.
+    <strong>낱말을 누르면</strong> 밑줄이 켜지고 다시 누르면 꺼집니다. <strong>여러 낱말을 끌어서</strong> 한 번에 그을 수도 있습니다. 붙어 있는 밑줄은 <strong>한 덩어리로 묶여</strong> 제출됩니다. 자동 저장되니 새로고침해도 남습니다.
     다 하시면 맨 아래 <strong>마치기</strong>를 누르십시오.
   </p>
 </header>
@@ -191,6 +197,7 @@ function build(){
   host.innerHTML="";
   lines=[];
   const marks=new Set(load());
+  const wseq={};
   const nums=Object.keys(TEXT[ver]).map(Number).sort((a,b)=>a-b);
   for(const n of nums){
     const p=document.createElement("p");
@@ -199,21 +206,81 @@ function build(){
     phrase(TEXT[ver][n]).forEach((seg,j)=>{
       const id=n+"-"+j;
       lines.push({id:id, vn:n, t:seg.t});
-      const cls = "ln" + (j===0?" first":"") + (seg.d?" d1":"") + (marks.has(id)?" mark":"");
+      const cls = "ln" + (j===0?" first":"") + (seg.d?" d1":"");
       const num = j===0 ? `<span class="vn">${n}</span>` : "";
-      html+=`<span class="${cls}" data-id="${id}">${num}<span class="t">${esc(seg.t)}</span></span>`;
+      // 낱말 단위 토큰화 — seq는 절 안에서 이어지므로 줄이 바뀌어도 인접 판정이 유지된다
+      const toks = seg.t.split(/(\s+)/).filter(x=>x!=="");
+      let inner = "";
+      for(const tk of toks){
+        if(/^\s+$/.test(tk)){ inner += `<span class="sp"> </span>`; continue; }
+        const wid = n+":"+(wseq[n]=(wseq[n]||0)+1);
+        inner += `<span class="w${marks.has(wid)?" u":""}" data-w="${wid}">${esc(tk)}</span>`;
+      }
+      html+=`<span class="${cls}" data-id="${id}">${num}<span class="t">${inner}</span></span>`;
     });
     p.innerHTML=html;
     host.appendChild(p);
   }
-  host.querySelectorAll(".ln").forEach(el=>{
+  host.querySelectorAll(".w").forEach(el=>{
     el.addEventListener("click",()=>{
-      el.classList.toggle("mark");
-      const m=[...host.querySelectorAll(".ln.mark")].map(x=>x.dataset.id);
-      save(m);
+      if(dragHandled) return;          // 드래그였다면 mouseup 이 이미 처리했다
+      el.classList.toggle("u");
+      persist();
     });
   });
+  paintGaps();
 }
+
+function persist(){
+  paintGaps();
+  save([...host.querySelectorAll(".w.u")].map(x=>x.dataset.w));
+}
+
+/* 양옆이 모두 밑줄이면 사이 공백도 밑줄 — 덩어리가 끊겨 보이지 않게 */
+function paintGaps(){
+  host.querySelectorAll(".sp").forEach(sp=>{
+    const a=sp.previousElementSibling, b=sp.nextElementSibling;
+    const on = a && b && a.classList.contains("w") && b.classList.contains("w")
+            && a.classList.contains("u") && b.classList.contains("u");
+    sp.classList.toggle("u", !!on);
+  });
+}
+
+/* 연속된 밑줄 낱말을 한 덩어리로 묶는다.
+   seq 가 절 안에서 이어지므로 구문 배열의 줄바꿈을 가로질러도 하나로 합쳐진다.
+   절이 바뀌면 반드시 끊는다. */
+function markedBlocks(){
+  const out=[];
+  host.querySelectorAll("p.verse").forEach(p=>{
+    const vn = +(p.querySelector(".vn")?.textContent || 0);
+    let cur = null;
+    p.querySelectorAll(".w").forEach(w=>{
+      const seq = +w.dataset.w.split(":")[1];
+      if(w.classList.contains("u")){
+        if(cur && seq === cur.last+1){ cur.words.push(w.textContent); cur.last = seq; }
+        else { if(cur) out.push(cur); cur = {vn, words:[w.textContent], last:seq}; }
+      }
+    });
+    if(cur){ out.push(cur); cur=null; }
+  });
+  return out.map(b=>({vn:b.vn, text:b.words.join(" ")}));
+}
+
+/* 드래그로 여러 낱말에 한 번에 긋기 — 낱말 경계로 스냅된다 */
+let dragHandled=false;
+document.addEventListener("mouseup",()=>{
+  const sel=getSelection();
+  if(!sel || !sel.rangeCount || sel.isCollapsed) return;
+  const r=sel.getRangeAt(0);
+  if(!host.contains(r.commonAncestorContainer)) return;
+  const hit=[...host.querySelectorAll(".w")].filter(w=>r.intersectsNode(w));
+  if(hit.length<2) return;             // 한 낱말이면 click 이 처리
+  const allOn = hit.every(w=>w.classList.contains("u"));
+  hit.forEach(w=>w.classList.toggle("u", !allOn));
+  persist();
+  sel.removeAllRanges();
+  dragHandled=true; setTimeout(()=>{dragHandled=false;},0);
+});
 
 /* ── 음성 (프리미엄 우선, UI 비노출) ──────── */
 function pickVoice(persona){
@@ -265,7 +332,7 @@ document.getElementById("pause").addEventListener("click",()=>{
 });
 document.getElementById("stop").addEventListener("click",stop);
 document.getElementById("clear").addEventListener("click",()=>{
-  host.querySelectorAll(".ln.mark").forEach(e=>e.classList.remove("mark"));
+  host.querySelectorAll(".w.u,.sp.u").forEach(e=>e.classList.remove("u"));
   save([]);
 });
 document.querySelectorAll("button.ver").forEach(b=>b.addEventListener("click",()=>{
@@ -280,21 +347,19 @@ document.querySelectorAll("button.spd").forEach(b=>b.addEventListener("click",()
 
 /* ── 마치기 → 밑줄 제출 ─────────────────── */
 document.getElementById("done").addEventListener("click",async ()=>{
-  const marked=[...host.querySelectorAll(".ln.mark")].map(e=>e.dataset.id);
+  const blocks=markedBlocks();
   const box=document.getElementById("out"),
         ta=document.getElementById("outText"),
         msg=document.getElementById("outMsg");
-  if(!marked.length){
+  if(!blocks.length){
     box.style.display="block";
     ta.value="";
-    msg.textContent="걸리는 단어·문장에 먼저 밑줄을 그어 주십시오. 줄을 누르면 밑줄이 켜집니다.";
+    msg.textContent="걸리는 낱말에 먼저 밑줄을 그어 주십시오. 낱말을 누르거나 여러 낱말을 끌면 밑줄이 켜집니다.";
     box.scrollIntoView({behavior:"smooth",block:"center"});
     return;
   }
-  const set=new Set(marked);
-  const body=lines.filter(l=>set.has(l.id))
-    .map(l=>`${l.vn}절  ${l.t}`).join("\n");
-  const out=`[2단계 밑줄 제출 — 눅 19:1-10 · ${ver}]\n\n${body}`;
+  const body=blocks.map(b=>`${b.vn}절  ${b.text}`).join("\n");
+  const out=`[{{SUBMIT_HEADING}} · ${ver}]  밑줄 ${blocks.length}덩어리\n\n${body}`;
   ta.value=out;
   box.style.display="block";
   box.scrollIntoView({behavior:"smooth",block:"center"});
